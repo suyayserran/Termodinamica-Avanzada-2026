@@ -1,0 +1,88 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# ============================================================
+# Parámetros de la simulación
+# ============================================================
+
+
+# Distintos valores de N = cantidad de lanzamientos de moneda en cada experimento
+
+valores_N = [10, 100, 1000]
+
+
+# M = cantidad de veces que repetimos el experimento
+
+M = 10_000
+
+
+# ============================================================
+# Simulamos cada valor de N
+# ============================================================
+
+for N in valores_N:
+
+    # np.random.rand(M, N) genera una matriz de M x N
+    # números aleatorios uniformes entre 0 y 1.
+    #
+    # Cada fila representa un experimento.
+    # Cada columna representa un lanzamiento.
+
+    R = np.random.rand(M, N)
+
+    # Consideramos que sale CARA si R < 1/2.
+    # Esto produce una matriz de True y False.
+    #
+    # True  -> cara
+    # False -> cruz
+
+    caras = R < 0.5
+
+    # Número de caras en cada experimento
+    # axis=1 significa que sumamos a lo largo de cada fila.
+    #
+    # Como True equivale a 1 y False equivale a 0,
+    # np.sum cuenta directamente el número de caras.
+
+    numero_caras = np.sum(caras, axis=1)
+
+    # Frecuencia relativa
+    f = numero_caras / N
+
+
+    # ========================================================
+    # Histograma
+    # ========================================================
+
+    plt.figure(figsize=(8, 5))
+
+    plt.hist(f, bins=30, density=True)
+
+
+    # ========================================================
+    # Gaussiana predicha por el TCL
+    # ========================================================
+
+    mu = 0.5
+    sigma = 1 / (2 * np.sqrt(N))
+
+    x = np.linspace(0, 1, 500)       # Puntos donde vamos a evaluar la gaussiana
+
+    gaussiana = (
+        1 / (sigma * np.sqrt(2 * np.pi))
+        * np.exp(-(x - mu)**2 / (2 * sigma**2))
+    )
+
+    plt.plot(x, gaussiana, linewidth=2)
+
+
+    # ========================================================
+    # Configuración del gráfico
+    # ========================================================
+
+    plt.xlabel("Frecuencia relativa f")
+    plt.ylabel("Densidad")
+    plt.title(f"N = {N}")
+
+    plt.show()
