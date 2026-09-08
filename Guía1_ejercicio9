@@ -1,0 +1,131 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ============================================================
+# 1. Cantidad de direcciones que queremos generar
+# ============================================================
+
+n = 10_000
+
+
+# ============================================================
+# 2. Generamos números aleatorios uniformes en [0,1]
+# ============================================================
+
+# R1 y R2 son variables aleatorias U[0,1]
+R1 = np.random.rand(n)
+R2 = np.random.rand(n)
+
+
+# ============================================================
+# 3. Generamos phi
+# ============================================================
+
+# Queremos que phi ~ U[0, 2*pi].
+#
+# Si R1 ~ U[0,1], entonces:
+#
+#       phi = 2*pi*R1
+#
+# tiene distribución uniforme entre 0 y 2*pi.
+
+phi = 2 * np.pi * R1
+
+
+# ============================================================
+# 4. Generamos xi = cos(theta)
+# ============================================================
+
+# Del inciso (b) sabemos que:
+#
+#       xi = cos(theta) ~ U[-1,1]
+#
+# Transformamos R2 ~ U[0,1] mediante:
+#
+#       xi = 2*R2 - 1
+#
+# para obtener una variable uniforme entre -1 y 1.
+
+xi = 2 * R2 - 1
+
+
+# ============================================================
+# 5. Obtenemos theta
+# ============================================================
+
+# Como:
+#
+#       xi = cos(theta)
+#
+# entonces:
+#
+#       theta = arccos(xi)
+
+theta = np.arccos(xi)
+
+
+# ============================================================
+# 6. Pasamos a coordenadas cartesianas
+# ============================================================
+
+# Un versor en coordenadas esféricas es:
+#
+#   Omega = (sin(theta)*cos(phi),
+#            sin(theta)*sin(phi),
+#            cos(theta))
+#
+# Como cos(theta) = xi, podemos usar directamente xi.
+
+x = np.sqrt(1 - xi**2) * np.cos(phi)
+y = np.sqrt(1 - xi**2) * np.sin(phi)
+z = xi
+
+
+# ============================================================
+# 7. Graficamos las direcciones sobre la esfera
+# ============================================================
+
+fig = plt.figure(figsize=(8, 8))
+
+ax = fig.add_subplot(111, projection='3d')
+
+ax.scatter(x, y, z, s=2)
+
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.set_zlabel("z")
+
+#ax.set_title("Direcciones aleatorias uniformes sobre la esfera")
+
+# Para que los tres ejes tengan la misma escala
+ax.set_box_aspect([1, 1, 1])
+
+plt.show()
+
+
+# ============================================================
+# 8. Histograma de las proyecciones sobre el eje z
+# ============================================================
+
+# La proyección sobre el eje z es:
+#
+#       z = cos(theta) = xi
+#
+# Del inciso (c) sabemos que xi debe ser uniforme en [-1,1].
+
+plt.figure(figsize=(8, 5))
+
+plt.hist(z, bins=30, density=True)
+
+# Densidad teórica de una U[-1,1]:
+#       f(z) = 1/2
+#
+# La dibujamos para comparar.
+
+plt.axhline(1/2, linestyle='--')
+
+plt.xlabel("Proyección sobre el eje z")
+plt.ylabel("Densidad")
+#plt.title("Histograma de las proyecciones")
+
+plt.show()
