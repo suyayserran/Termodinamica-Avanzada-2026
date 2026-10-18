@@ -1,0 +1,335 @@
+# ============================================================
+# GUIA 4 - EJERCICIO 8 (MOBY DICK)
+# ============================================================
+
+# ------------------------------------------------------------
+# CONFIGURACIÓN GENERAL (correr primero)
+# ------------------------------------------------------------
+import io
+import zipfile
+import numpy as np
+import pandas as pd
+from collections import Counter
+from google.colab import files
+from IPython.display import display
+
+rng = np.random.default_rng()
+
+# 26 letras (sin ñ) + espacio
+ALFABETO = " abcdefghijklmnopqrstuvwxyz"
+M = len(ALFABETO)
+
+# Subir los archivos .txt de Moby Dick
+archivos = files.upload()
+
+
+def normalizar_texto(contenido):
+    """Pasa a minúsculas, reemplaza ñ por n, convierte saltos de línea
+    y tabulaciones en espacios y deja solo a-z y espacio."""
+    texto = contenido.decode("utf-8").lower()
+    texto = texto.replace("ñ", "n")
+    texto = texto.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    texto = "".join(c for c in texto if c == " " or "a" <= c <= "z")
+    return texto.strip()
+
+
+def entropia_1(texto):
+    """s1 = -sum p(x) log2 p(x)"""
+    N = len(texto)
+    s1 = 0.0
+    for cantidad in Counter(texto).values():
+        p = cantidad / N
+        s1 -= p * np.log2(p)
+    return s1
+
+
+def entropia_2(texto):
+    """s2 = -sum p2(x1,x2) log2 p2(x2|x1)"""
+    N = len(texto)
+    pares = Counter(zip(texto[:-1], texto[1:]))
+
+    # N(x1): apariciones de x1 como primer elemento de un par
+    conteo_inicial = Counter()
+    for (x1, x2), cantidad in pares.items():
+        conteo_inicial[x1] += cantidad
+
+    s2 = 0.0
+    for (x1, x2), cantidad in pares.items():
+        p_conjunta = cantidad / (N - 1)
+        p_condicional = cantidad / conteo_inicial[x1]
+        s2 -= p_conjunta * np.log2(p_condicional)
+    return s2
+
+
+def entropia_3(texto):
+    """s3 = -sum p3(x1,x2,x3) log2 p3(x3|x1,x2)"""
+    N = len(texto)
+    tripletas = Counter(zip(texto[:-2], texto[1:-1], texto[2:]))
+
+    # N(x1,x2): apariciones del par como contexto
+    conteo_prefijos = Counter()
+    for (x1, x2, x3), cantidad in tripletas.items():
+        conteo_prefijos[(x1, x2)] += cantidad
+
+    s3 = 0.0
+    for (x1, x2, x3), cantidad in tripletas.items():
+        p_conjunta = cantidad / (N - 2)
+        p_condicional = cantidad / conteo_prefijos[(x1, x2)]
+        s3 -= p_conjunta * np.log2(p_condicional)
+    return s3
+
+
+# Textos normalizados (uno por archivo subido)
+textos = {}
+for nombre, contenido in archivos.items():
+    texto = normalizar_texto(contenido)
+    if len(texto) < 3:
+        raise ValueError(f"El archivo {nombre} no tiene suficientes caracteres válidos.")
+    textos[nombre] = texto
+
+
+# ------------------------------------------------------------
+# a) Aproximación de orden cero (entropía máxima teórica)
+# ------------------------------------------------------------
+s_max = np.log2(M)
+print(f"Entropía máxima por carácter: {s_max:.4f} bits/caracter")
+
+
+# ------------------------------------------------------------
+# b) Aproximación de orden uno
+# ------------------------------------------------------------
+resultados_s1 = {}
+
+for nombre, texto in textos.items():
+    N = len(texto)
+    conteo = Counter(texto)
+    probabilidades = np.array([conteo[c] / N for c in ALFABETO])
+
+    s1 = entropia_1(texto)
+    resultados_s1[nombre] = s1
+
+    print(f"\nArchivo: {nombre}")
+    print(f"Cantidad de caracteres: {N}")
+    print(f"Entropía s1 = {s1:.6f} bits/caracter")
+
+    tabla = pd.DataFrame({
+        "Símbolo": ["espacio" if c == " " else c for c in ALFABETO],
+        "Frecuencia": [conteo[c] for c in ALFABETO],
+        "Probabilidad": probabilidades,
+    })
+    display(tabla)
+
+print("\nResumen de entropías s1:")
+for nombre, s1 in resultados_s1.items():
+    print(f"{nombre}: {s1:.6f} bits/caracter")
+
+
+# ------------------------------------------------------------
+# c) Aproximación de orden 2 (1 carácter de contexto)
+# ------------------------------------------------------------
+resultados_s2 = {}
+
+for nombre, texto in textos.items():
+    s2 = entropia_2(texto)
+    resultados_s2[nombre] = s2
+
+    print(f"\nArchivo: {nombre}")
+    print(f"Cantidad de caracteres: {len(texto)}")
+    print(f"Cantidad de pares: {len(texto) - 1}")
+    print(f"s2 = {s2:.6f} bits/caracter")
+
+print("\nResumen de entropías s2:")
+for nombre, s2 in resultados_s2.items():
+    print(f"{nombre}: {s2:.6f} bits/caracter")
+
+
+# ------------------------------------------------------------
+# d) Aproximación de orden 3 (2 caracteres de contexto)
+# ------------------------------------------------------------
+resultados_s3 = {}
+
+for nombre, texto in textos.items():
+    s3 = entropia_3(texto)
+    resultados_s3[nombre] = s3
+
+    print(f"\nArchivo: {nombre}")
+    print(f"Cantidad de caracteres: {len(texto)}")
+    print(f"Cantidad de trigramas: {len(texto) - 2}")
+    print(f"s3 = {s3:.6f} bits/caracter")
+
+print("\nResumen de entropías s3:")
+for nombre, s3 in resultados_s3.items():
+    print(f"{nombre}: {s3:.6f} bits/caracter")
+
+
+# ------------------------------------------------------------
+# e) Texto al azar con distribución uniforme de caracteres
+# ------------------------------------------------------------
+print(f"Entropía máxima teórica: {s_max:.6f} bits/caracter")
+
+for nombre, texto_original in textos.items():
+    N = len(texto_original)
+
+    # Texto aleatorio uniforme de la misma longitud
+    texto_aleatorio = "".join(rng.choice(list(ALFABETO), size=N))
+
+    print(f"\nArchivo original: {nombre}")
+    print(f"Longitud: {N} caracteres")
+
+    print("\nTexto original:")
+    print(f"s1 = {entropia_1(texto_original):.6f} bits/caracter")
+    print(f"s2 = {entropia_2(texto_original):.6f} bits/caracter")
+    print(f"s3 = {entropia_3(texto_original):.6f} bits/caracter")
+
+    print("\nTexto aleatorio uniforme:")
+    print(f"s1 = {entropia_1(texto_aleatorio):.6f} bits/caracter")
+    print(f"s2 = {entropia_2(texto_aleatorio):.6f} bits/caracter")
+    print(f"s3 = {entropia_3(texto_aleatorio):.6f} bits/caracter")
+
+
+# ------------------------------------------------------------
+# f) Generación de texto de 1000 caracteres según p1, p2 y p3
+# ------------------------------------------------------------
+
+# Elegir un símbolo de acuerdo con las frecuencias observadas
+def elegir_simbolo(conteos):
+    simbolos = list(conteos.keys())
+    cantidades = np.array(list(conteos.values()), dtype=float)
+    probabilidades = cantidades / cantidades.sum()
+    return rng.choice(simbolos, p=probabilidades)
+
+
+def transiciones_orden2(pares):
+    """Para cada carácter x1, cuenta qué caracteres x2 lo siguen."""
+    transiciones = {}
+    for (x1, x2), cantidad in pares.items():
+        if x1 not in transiciones:
+            transiciones[x1] = Counter()
+        transiciones[x1][x2] += cantidad
+    return transiciones
+
+
+# Modelo p1: cada carácter se genera independientemente
+def generar_p1(texto, longitud=1000):
+    conteos = Counter(texto)
+    muestra = [elegir_simbolo(conteos) for _ in range(longitud)]
+    return "".join(muestra)
+
+
+# Modelo p2: el siguiente carácter depende del anterior
+def generar_p2(texto, longitud=1000):
+    conteos1 = Counter(texto)
+    pares = Counter(zip(texto[:-1], texto[1:]))
+    transiciones = transiciones_orden2(pares)
+
+    # Primer carácter elegido según p1
+    muestra = [elegir_simbolo(conteos1)]
+
+    while len(muestra) < longitud:
+        anterior = muestra[-1]
+        if anterior in transiciones:
+            siguiente = elegir_simbolo(transiciones[anterior])
+        else:
+            siguiente = elegir_simbolo(conteos1)
+        muestra.append(siguiente)
+
+    return "".join(muestra)
+
+
+# Modelo p3: el siguiente carácter depende de los dos anteriores
+def generar_p3(texto, longitud=1000):
+    conteos1 = Counter(texto)
+    pares = Counter(zip(texto[:-1], texto[1:]))
+    tripletas = Counter(zip(texto[:-2], texto[1:-1], texto[2:]))
+
+    # Transiciones asociadas a cada par de contexto
+    transiciones = {}
+    for (x1, x2, x3), cantidad in tripletas.items():
+        contexto = (x1, x2)
+        if contexto not in transiciones:
+            transiciones[contexto] = Counter()
+        transiciones[contexto][x3] += cantidad
+
+    # Para el caso de respaldo (se calcula una sola vez)
+    transiciones2 = transiciones_orden2(pares)
+
+    # Par inicial elegido según su frecuencia observada
+    pares_lista = list(pares.keys())
+    cantidades = np.array(list(pares.values()), dtype=float)
+    probabilidades = cantidades / cantidades.sum()
+    indice = rng.choice(len(pares_lista), p=probabilidades)
+    par_inicial = pares_lista[indice]
+
+    muestra = [par_inicial[0], par_inicial[1]]
+
+    while len(muestra) < longitud:
+        contexto = (muestra[-2], muestra[-1])
+
+        if contexto in transiciones:
+            siguiente = elegir_simbolo(transiciones[contexto])
+        else:
+            # Sin transición de tercer orden observada:
+            # recurrimos a las de segundo orden
+            ultimo = muestra[-1]
+            if ultimo in transiciones2:
+                siguiente = elegir_simbolo(transiciones2[ultimo])
+            else:
+                siguiente = elegir_simbolo(conteos1)
+
+        muestra.append(siguiente)
+
+    return "".join(muestra[:longitud])
+
+
+# Generar las muestras de cada versión de Moby Dick
+muestras = {}
+
+for nombre, texto in textos.items():
+    nombre_base = nombre.rsplit(".", 1)[0]
+    muestras[f"{nombre_base}_p1.txt"] = generar_p1(texto)
+    muestras[f"{nombre_base}_p2.txt"] = generar_p2(texto)
+    muestras[f"{nombre_base}_p3.txt"] = generar_p3(texto)
+
+# Mostrar las muestras y guardarlas en archivos .txt
+for nombre, muestra in muestras.items():
+    print(f"\nArchivo: {nombre}")
+    print(f"Longitud: {len(muestra)} caracteres")
+    print(muestra[:150])
+
+    with open(nombre, "w", encoding="utf-8") as f:
+        f.write(muestra)
+
+print("\nSe generaron y guardaron las seis muestras.")
+
+
+# ------------------------------------------------------------
+# g) Estimación de la entropía de Moby Dick (compresión ZIP)
+# ------------------------------------------------------------
+print("Comparación de tamaños y estimación de entropía\n")
+
+for nombre, contenido in archivos.items():
+    texto_crudo = contenido.decode("utf-8")
+    N = len(texto_crudo)
+    tam_original = len(contenido)
+
+    # Comprimir en formato ZIP, en memoria
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archivo_zip:
+        archivo_zip.writestr(nombre, contenido)
+        # Tamaño de los datos comprimidos, sin cabeceras
+        tam_comprimido = archivo_zip.getinfo(nombre).compress_size
+
+    # Tamaño total del ZIP, incluyendo metadatos
+    tam_zip = len(buffer.getvalue())
+
+    bits_por_caracter = 8 * tam_comprimido / N
+    reduccion = 100 * (1 - tam_comprimido / tam_original)
+
+    print(f"Archivo: {nombre}")
+    print(f"Número de caracteres: {N}")
+    print(f"Tamaño original: {tam_original} bytes")
+    print(f"Tamaño comprimido: {tam_comprimido} bytes")
+    print(f"Tamaño total del ZIP: {tam_zip} bytes")
+    print(f"Reducción del tamaño: {reduccion:.2f} %")
+    print(f"Estimación: {bits_por_caracter:.4f} bits/caracter")
+    print("-" * 45)
