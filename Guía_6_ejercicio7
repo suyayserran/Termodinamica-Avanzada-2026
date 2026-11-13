@@ -1,0 +1,42 @@
+# Item d) Gráfico de la entropía de entrelazamiento en función de |α|
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.special import xlogy
+
+# Valores de |alpha|
+alpha = np.linspace(0, 2.5, 500)
+
+# Autovalores de la matriz densidad reducida
+kappa = np.exp(-2 * alpha**2)
+
+lambda_plus = (1 + kappa) / 2
+lambda_minus = (1 - kappa) / 2
+
+# Entropía de von Neumann
+# xlogy permite evaluar correctamente 0*log(0) = 0
+S = -xlogy(lambda_plus, lambda_plus) \
+    - xlogy(lambda_minus, lambda_minus)
+
+# Gráfico
+plt.figure(figsize=(8, 5))
+
+plt.plot(alpha, S, linewidth=2,
+         label=r'$S(|\alpha|)$')
+
+plt.axhline(np.log(2), linestyle='--',
+            label=r'$\ln 2$')
+
+plt.xlabel(r'$|\alpha|$', fontsize=13)
+plt.ylabel(r'$S$', fontsize=13)
+plt.xlim(0, 2.5)
+plt.ylim(0, 0.78)
+
+plt.grid(True, alpha=0.3)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig("entropia_entrelazamiento.png",
+            dpi=300, bbox_inches="tight")
+
+plt.show()
