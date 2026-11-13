@@ -1,0 +1,74 @@
+# Item d) Grafico de ρ(W) y  ρ∗(-W )
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Parámetros del sistema
+m = 1.0
+omega = 1.0
+beta = 1.0
+L_i = 0.0
+nu = 1.0
+tau = np.pi / np.sqrt(2)
+
+# Parámetros derivados
+Omega = np.sqrt(2) * omega
+L_f = L_i + nu * tau
+
+Delta_F = (m * omega**2 / 4) * (L_f**2 - L_i**2)
+
+W_diss = (m * nu**2 / 4) * (1 - np.cos(Omega * tau))
+
+sigma2 = 2 * W_diss / beta
+sigma = np.sqrt(sigma2)
+
+# Valores de trabajo para el eje horizontal
+W = np.linspace(
+    min(Delta_F - W_diss, Delta_F + W_diss) - 4*sigma,
+    max(Delta_F - W_diss, Delta_F + W_diss) + 4*sigma,
+    1000
+)
+
+# Distribución del protocolo directo
+rho = (1 / np.sqrt(2 * np.pi * sigma2)) * np.exp(
+    -(W - Delta_F - W_diss)**2 / (2 * sigma2)
+)
+
+# Distribución del protocolo inverso evaluada en -W
+rho_reverse = (1 / np.sqrt(2 * np.pi * sigma2)) * np.exp(
+    -(W - Delta_F + W_diss)**2 / (2 * sigma2)
+)
+
+# Gráfico
+plt.figure(figsize=(8, 5))
+
+plt.plot(W, rho, label=r'$\rho(W)$', linewidth=2)
+plt.plot(W, rho_reverse, label=r'$\rho^*(-W)$', linewidth=2)
+
+# Variación de energía libre
+plt.axvline(
+    Delta_F,
+    linestyle='--',
+    color='black',
+    alpha=0.7,
+    label=r'$\Delta F$'
+)
+
+plt.xlabel(r'$W$', fontsize=13)
+plt.ylabel(r'$\rho(W)$', fontsize=13)
+plt.title('Distribuciones de trabajo')
+
+plt.legend()
+plt.grid(alpha=0.3)
+plt.tight_layout()
+
+# Guardar figura
+plt.savefig('densidades_trabajo.png', dpi=300, bbox_inches='tight')
+
+plt.show()
+
+# Mostrar parámetros utilizados
+print(f"Delta F = {Delta_F:.4f}")
+print(f"W_diss = {W_diss:.4f}")
+print(f"sigma^2 = {sigma2:.4f}")
